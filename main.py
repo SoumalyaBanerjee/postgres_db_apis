@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Query
 import psycopg2
 from datetime import datetime
 from typing import Optional
+from fastapi import HTTPException
 
 app = FastAPI()
 
@@ -129,3 +130,60 @@ async def run_custom_query(request: Request):
         conn.close()
 
     return {"results": result}
+
+
+@app.put("/update/temperature")
+async def update_temperature(request: Request):
+    data = await request.json()
+    billet_no = data.get("billet_no")
+    new_temperature = data.get("temperature")
+
+    if billet_no is None or new_temperature is None:
+        raise HTTPException(status_code=400, detail="Missing billet_no or temperature")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE thrift.thermal_sensor_input
+            SET temperature = %s
+            WHERE billet_no = %s
+        """, (new_temperature, billet_no))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="No record found for given billet_no")
+
+    except Exception as e:
+        conn.rollback()
+        return {"error": str(e)}
+    finally:
+        cur.close()
+        conn.close()
+
+    return {"status": "updated", "billet_no": billet_no, "new_temperature": new_temperature}
+
+@app.delete("/delete/by_billet")
+def delete_by_billet(billet_no: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            DELETE FROM thrift.thermal_sensor_input
+            WHERE billet_no = %s
+        """, (billet_no,))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="No record found for given billet_no")
+
+    except Exception as e:
+        conn.rollback()
+        return {"error": str(e)}
+    finally:
+        cur.close()
+        conn.close()
+
+    return {"status": "deleted", "billet_no": billet_no}
+
+
