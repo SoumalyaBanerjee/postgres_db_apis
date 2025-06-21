@@ -206,3 +206,31 @@ def delete_by_billet(billet_no: int):
     return {"status": "deleted", "billet_no": billet_no}
 
 
+@app.get("/select/last_30_days")
+def get_last_30_days():
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Calculate date range: today and 30 days ago
+        end = datetime.utcnow()
+        start = end - timedelta(days=30)
+
+        cur.execute("""
+            SELECT temperature, timestamp, billet_no 
+            FROM thrift.thermal_sensor_input
+            WHERE "timestamp" >= %s AND "timestamp" <= %s
+        """, (start, end))
+
+        result = cur.fetchall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'cur' in locals():
+            cur.close()
+        if 'conn' in locals():
+            conn.close()
+
+    return {"results": result}
+
+
