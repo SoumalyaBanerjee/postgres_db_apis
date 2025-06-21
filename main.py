@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import Optional
 from fastapi import HTTPException
 from pydantic import BaseModel, validator
+from psycopg2.extras import RealDictCursor
+
 
 
 app = FastAPI()
