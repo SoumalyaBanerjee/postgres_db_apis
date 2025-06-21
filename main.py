@@ -3,6 +3,8 @@ import psycopg2
 from datetime import datetime
 from typing import Optional
 from fastapi import HTTPException
+from pydantic import BaseModel, validator
+
 
 app = FastAPI()
 
