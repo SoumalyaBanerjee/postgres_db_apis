@@ -68,22 +68,37 @@ def get_by_billet(billet_no: int):
 
     return {"results": result}
 
-# SELECT by timestamp range
-@app.get("/select/by_timestamp")
-def get_by_timestamp(start: str, end: str):
-    conn = get_connection()
-    cur = conn.cursor()
+# Request body model
+class TimestampRequest(BaseModel):
+    start: datetime
+    end: datetime
+
+    @validator("end")
+    def validate_range(cls, v, values):
+        if "start" in values and v < values["start"]:
+            raise ValueError("End must be after start")
+        return v
+
+@app.post("/select/by_timestamp")
+def get_by_timestamp(data: TimestampRequest):
     try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)  # <-- returns dicts instead of tuples
+
         cur.execute("""
-            SELECT * FROM thrift.thermal_sensor_input
+            SELECT temperature, timestamp, billet_no 
+            FROM thrift.thermal_sensor_input
             WHERE "timestamp" >= %s AND "timestamp" <= %s
-        """, (start, end))
-        result = cur.fetchall()
+        """, (data.start, data.end))
+
+        result = cur.fetchall()  # list of dicts
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
-        cur.close()
-        conn.close()
+        if 'cur' in locals():
+            cur.close()
+        if 'conn' in locals():
+            conn.close()
 
     return {"results": result}
 
