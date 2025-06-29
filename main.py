@@ -10,6 +10,16 @@ from psycopg2.extras import RealDictCursor
 
 app = FastAPI()
 
+# Allow only your frontend origin (e.g., Vite, running on localhost:5173)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # You can add more origins as needed
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 # PostgreSQL connection parameters
 hostname = "uq2gn.h.filess.io"
 database = "Thrift_moonneckit"
